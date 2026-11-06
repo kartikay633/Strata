@@ -66,7 +66,7 @@ export const LAYERS: { id: LayerId; label: string; color: string; blurb: string 
 export const LAYER_BY_ID = Object.fromEntries(LAYERS.map((l) => [l.id, l])) as Record<LayerId, (typeof LAYERS)[number]>
 
 const LAYER_RULES: { layer: LayerId; test: RegExp }[] = [
-  { layer: 'tests', test: /(^|\/)(tests?|__tests__|spec|specs|e2e|cypress|playwright|testing)\/|[._-](test|spec)\.[a-z]+$|(^|\/)test_[^/]+\.py$|_test\.(go|py|rb)$/i },
+  { layer: 'tests', test: /(^|\/)(tests?|__tests__|spec|specs|e2e|cypress|playwright|testing|testdata|test-data|fixtures?|__fixtures__|__mocks__)\/|[._-](test|spec)\.[a-z]+$|(^|\/)test_[^/]+\.py$|_test\.(go|py|rb)$/i },
   { layer: 'docs', test: /(^|\/)(docs?|documentation|examples?|samples?|website)\/|\.(md|mdx|rst|txt)$/i },
   { layer: 'config', test: /(^|\/)(\.github|\.circleci|scripts?|tools?|bin|deploy|infra|k8s|helm|docker|\.husky|config|configs|settings)\/|(^|\/)(Dockerfile|Makefile|Procfile|\.[a-z]+rc(\.[a-z]+)?|\.env[^/]*|[^/]*\.config\.[a-z]+|tsconfig[^/]*\.json|package\.json|pyproject\.toml|setup\.(py|cfg)|requirements[^/]*\.txt|go\.mod|Cargo\.toml|Gemfile|composer\.json|pom\.xml|build\.gradle(\.kts)?|docker-compose[^/]*\.ya?ml|vercel\.json|netlify\.toml|\.gitignore|\.editorconfig|LICENSE[^/]*)$|\.(ya?ml|toml|ini|tf)$/i },
   { layer: 'data', test: /(^|\/)(models?|schemas?|db|database|migrations?|prisma|entities|entity|repositor(y|ies)|dao|orm|seeds?|sql|store\/models)\/|\.(sql|prisma|graphql|gql|proto)$|(^|\/)(models?|schema|db|database)\.[a-z]+$/i },

@@ -146,6 +146,10 @@ function tryJs(ctx: ResolveCtx, base: string): string | null {
   return null
 }
 
+// Standard-library modules: imported like packages, but not dependencies worth listing.
+const NODE_BUILTINS = new Set(('assert async_hooks buffer child_process cluster console constants crypto dgram diagnostics_channel dns domain events fs http http2 https inspector module net os path perf_hooks process punycode querystring readline repl stream string_decoder sys timers tls trace_events tty url util v8 vm wasi worker_threads zlib').split(' '))
+const PY_STDLIB = new Set(('__future__ _typeshed abc argparse array ast asyncio atexit base64 binascii bisect builtins bz2 calendar cgi cmath code codecs collections colorsys concurrent configparser contextlib contextvars copy copyreg csv ctypes dataclasses datetime decimal difflib dis email encodings enum errno faulthandler fcntl filecmp fileinput fnmatch fractions ftplib functools gc getopt getpass gettext glob graphlib gzip hashlib heapq hmac html http imaplib importlib inspect io ipaddress itertools json keyword linecache locale logging lzma mailbox math mimetypes mmap multiprocessing netrc numbers operator optparse os pathlib pdb pickle pkgutil platform plistlib poplib posixpath pprint profile pstats pty pwd queue quopri random re readline reprlib resource runpy sched secrets select selectors shelve shlex shutil signal site smtplib socket socketserver sqlite3 ssl stat statistics string stringprep struct subprocess sys sysconfig tarfile tempfile termios textwrap threading time timeit tkinter token tokenize tomllib trace traceback tracemalloc tty types typing typing_extensions unicodedata unittest urllib uuid venv warnings wave weakref webbrowser winreg wsgiref xml xmlrpc zipfile zipimport zlib zoneinfo').split(' '))
+
 function packageName(spec: string) {
   if (spec.startsWith('node:')) return spec
   const parts = spec.split('/')
@@ -172,7 +176,7 @@ export function resolveImports(path: string, raw: RawImports, ctx: ResolveCtx) {
             }
           }
           if (!hit && raw.kind === 'css') hit = tryJs(ctx, joinPath(dir, spec)) ?? tryJs(ctx, joinPath(dir, '_' + spec))
-          if (!hit && raw.kind === 'js' && !spec.startsWith('#')) external.add(packageName(spec))
+          if (!hit && raw.kind === 'js' && !spec.startsWith('#') && !spec.startsWith('node:') && !NODE_BUILTINS.has(spec.split('/')[0])) external.add(packageName(spec))
         }
         break
       }
@@ -196,7 +200,7 @@ export function resolveImports(path: string, raw: RawImports, ctx: ResolveCtx) {
           }
           if (!hit) {
             const top = mod.split('.')[0]
-            if (top && !ctx.pyTops.has(top)) external.add(top)
+            if (top && !ctx.pyTops.has(top) && !PY_STDLIB.has(top)) external.add(top)
           }
         }
         break
