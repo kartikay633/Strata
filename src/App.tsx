@@ -52,6 +52,10 @@ export default function App() {
       if (runId.current !== id) return
       setError(e instanceof Error ? e.message : String(e))
       setPhase('landing')
+      // don't leave a failing repo in the URL, or a reload retries it
+      const clean = new URL(window.location.href)
+      clean.searchParams.delete('repo')
+      window.history.replaceState(null, '', clean)
     }
   }, [token])
 

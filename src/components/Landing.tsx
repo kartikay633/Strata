@@ -53,7 +53,7 @@ export default function Landing({ onSubmit, error, token, onToken }: {
           initial={{ opacity: 0, y: 16, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ delay: 0.6, duration: 0.5 }}
           onSubmit={(e) => { e.preventDefault(); if (value.trim()) onSubmit(value) }}
         >
-          <span className="faint mono" style={{ fontSize: 15 }}>github.com/</span>
+          <span className="faint mono search-prefix" style={{ fontSize: 15 }}>github.com/</span>
           <input autoFocus value={value} onChange={(e) => setValue(e.target.value)} placeholder="owner/repository" spellCheck={false} aria-label="GitHub repository" />
           <button className="btn-primary" type="submit" disabled={!value.trim()}>
             Explain <ArrowRight />

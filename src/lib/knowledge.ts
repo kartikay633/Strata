@@ -11,7 +11,7 @@ export const LANG_BY_EXT: Record<string, string> = {
   c: 'C', h: 'C', cpp: 'C++', cc: 'C++', hpp: 'C++', hh: 'C++', cxx: 'C++',
   vue: 'Vue', svelte: 'Svelte', astro: 'Astro',
   html: 'HTML', htm: 'HTML', css: 'CSS', scss: 'SCSS', sass: 'SCSS', less: 'Less',
-  md: 'Markdown', mdx: 'Markdown', rst: 'Docs', txt: 'Text',
+  md: 'Markdown', mdx: 'MDX', rst: 'Docs', txt: 'Text',
   json: 'JSON', yml: 'YAML', yaml: 'YAML', toml: 'TOML', xml: 'XML', ini: 'Config', env: 'Config',
   sh: 'Shell', bash: 'Shell', zsh: 'Shell', ps1: 'Shell', sql: 'SQL', graphql: 'GraphQL', gql: 'GraphQL',
   prisma: 'Prisma', proto: 'Protobuf', lua: 'Lua', ex: 'Elixir', exs: 'Elixir', hs: 'Haskell',
@@ -22,7 +22,7 @@ export const LANG_COLORS: Record<string, string> = {
   TypeScript: '#3b82f6', JavaScript: '#facc15', Python: '#38bdf8', Go: '#22d3ee', Rust: '#f97316',
   Java: '#ef4444', Kotlin: '#a855f7', Scala: '#dc2626', Ruby: '#e11d48', PHP: '#818cf8', 'C#': '#22c55e',
   Swift: '#fb923c', Dart: '#2dd4bf', C: '#94a3b8', 'C++': '#f472b6', Vue: '#34d399', Svelte: '#ff6b3d',
-  Astro: '#c084fc', HTML: '#f87171', CSS: '#60a5fa', SCSS: '#ec4899', Less: '#6366f1', Markdown: '#cbd5e1',
+  Astro: '#c084fc', HTML: '#f87171', CSS: '#60a5fa', SCSS: '#ec4899', Less: '#6366f1', Markdown: '#cbd5e1', MDX: '#fcb32c',
   Docs: '#cbd5e1', Text: '#64748b', JSON: '#a3a3a3', YAML: '#fca5a5', TOML: '#d4d4d4', XML: '#fdba74',
   Config: '#737373', Shell: '#4ade80', SQL: '#fbbf24', GraphQL: '#e879f9', Prisma: '#5eead4',
   Protobuf: '#a8a29e', Lua: '#6366f1', Elixir: '#a78bfa', Haskell: '#8b5cf6', Zig: '#f59e0b', R: '#60a5fa',
@@ -46,7 +46,7 @@ export const IGNORED_DIRS = [
 export const IGNORED_FILES = [
   /package-lock\.json$/, /yarn\.lock$/, /pnpm-lock\.yaml$/, /bun\.lockb?$/, /Cargo\.lock$/, /poetry\.lock$/,
   /go\.sum$/, /composer\.lock$/, /Gemfile\.lock$/, /\.min\.(js|css)$/, /\.map$/,
-  /\.(png|jpe?g|gif|webp|ico|bmp|svg|mp4|mp3|wav|ogg|webm|woff2?|ttf|eot|otf|pdf|zip|gz|tar|jar|exe|dll|so|dylib|bin|wasm|pyc|class|DS_Store)$/i,
+  /\.(png|jpe?g|gif|webp|ico|bmp|svg|mp4|mp3|wav|ogg|webm|woff2?|ttf|eot|otf|pdf|zip|gz|tar|jar|exe|dll|so|dylib|bin|wasm|pyc|class|DS_Store|ai|psd|sketch|fig|xcf|avif|heic|mov|tgz|7z|rar)$/i,
 ]
 
 /* ---------- Layers ---------- */
@@ -68,7 +68,7 @@ export const LAYER_BY_ID = Object.fromEntries(LAYERS.map((l) => [l.id, l])) as R
 const LAYER_RULES: { layer: LayerId; test: RegExp }[] = [
   { layer: 'tests', test: /(^|\/)(tests?|__tests__|spec|specs|e2e|cypress|playwright|testing|testdata|test-data|fixtures?|__fixtures__|__mocks__)\/|[._-](test|spec)\.[a-z]+$|(^|\/)test_[^/]+\.py$|_test\.(go|py|rb)$/i },
   { layer: 'docs', test: /(^|\/)(docs?|documentation|examples?|samples?|website)\/|\.(md|mdx|rst|txt)$/i },
-  { layer: 'config', test: /(^|\/)(\.github|\.circleci|scripts?|tools?|bin|deploy|infra|k8s|helm|docker|\.husky|config|configs|settings)\/|(^|\/)(Dockerfile|Makefile|Procfile|\.[a-z]+rc(\.[a-z]+)?|\.env[^/]*|[^/]*\.config\.[a-z]+|tsconfig[^/]*\.json|package\.json|pyproject\.toml|setup\.(py|cfg)|requirements[^/]*\.txt|go\.mod|Cargo\.toml|Gemfile|composer\.json|pom\.xml|build\.gradle(\.kts)?|docker-compose[^/]*\.ya?ml|vercel\.json|netlify\.toml|\.gitignore|\.editorconfig|LICENSE[^/]*)$|\.(ya?ml|toml|ini|tf)$/i },
+  { layer: 'config', test: /(^|\/)(\.github|\.circleci|scripts?|tools?|bin|deploy|infra|k8s|helm|docker|\.husky|config|configs|settings)\/|(^|\/)(Dockerfile|Makefile|Procfile|\.[a-z]+rc(\.[a-z]+)?|\.env[^/]*|[^/]*\.config\.[a-z]+|tsconfig[^/]*\.json|package\.json|pyproject\.toml|setup\.(py|cfg)|requirements[^/]*\.txt|go\.mod|Cargo\.toml|Gemfile|composer\.json|pom\.xml|build\.gradle(\.kts)?|docker-compose[^/]*\.ya?ml|vercel\.json|netlify\.toml|\.gitignore|\.editorconfig|LICENSE[^/]*|\.[\w.-]+|[^/]+\.lock|MANIFEST\.in|NOTICE[^/]*|CODEOWNERS|py\.typed|[^/]*\.cfg)$|\.(ya?ml|toml|ini|tf)$/i },
   { layer: 'data', test: /(^|\/)(models?|schemas?|db|database|migrations?|prisma|entities|entity|repositor(y|ies)|dao|orm|seeds?|sql|store\/models)\/|\.(sql|prisma|graphql|gql|proto)$|(^|\/)(models?|schema|db|database)\.[a-z]+$/i },
   { layer: 'api', test: /(^|\/)(api|apis|routes?|routers?|controllers?|handlers?|endpoints?|middlewares?|server|resolvers?|views\.py|urls\.py|cmd|grpc|rest|http)(\/|\.[a-z]+$)|(^|\/)(server|app|main|index|router|routes|urls|wsgi|asgi)\.(js|ts|py|go|rb|php)$/i },
   { layer: 'interface', test: /(^|\/)(components?|pages|views|screens|layouts?|ui|templates?|widgets?|public|static|styles?|css|assets|theme|app\/[^/]*\/?page|frontend|client|web)\/|\.(tsx|jsx|vue|svelte|astro|html|htm|css|scss|sass|less)$/i },

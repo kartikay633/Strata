@@ -125,7 +125,7 @@ export default function TourView({ a, nav }: { a: Analysis; nav: Nav }) {
               </motion.div>
             )}
 
-            <div style={{ display: 'flex', gap: 8, marginTop: 22 }}>
+            <div className="tour-nav" style={{ display: 'flex', gap: 8, marginTop: 22, flexWrap: 'wrap' }}>
               <button className="ghost-btn" onClick={() => go(i - 1)} disabled={i === 0} style={{ opacity: i === 0 ? 0.4 : 1 }}>← Back</button>
               {i < steps.length - 1
                 ? <button className="btn-primary" onClick={() => go(i + 1)}>Next: {steps[i + 1].title} <ArrowRight width={14} height={14} /></button>

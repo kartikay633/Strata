@@ -57,7 +57,7 @@ a { color: inherit; }
 .landing { position: relative; min-height: 100vh; display: grid; place-items: center; padding: 32px 16px; overflow: hidden; }
 .bg-canvas { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
 .glow { position: fixed; border-radius: 50%; filter: blur(90px); opacity: 0.35; pointer-events: none; z-index: 0; }
-.landing-inner { position: relative; z-index: 1; width: min(860px, 100%); text-align: center; }
+.landing-inner { position: relative; z-index: 1; width: 100%; max-width: 860px; min-width: 0; text-align: center; }
 .brand { display: inline-flex; align-items: center; gap: 10px; padding: 6px 14px 6px 8px; border: 1px solid var(--line-2); border-radius: 999px; background: rgba(18, 21, 33, 0.6); backdrop-filter: blur(8px); font-weight: 600; font-size: 13px; }
 .brand-badge { font-size: 11px; color: var(--muted); font-weight: 500; }
 .hero-title { font-size: clamp(40px, 7vw, 76px); line-height: 1.02; letter-spacing: -0.04em; font-weight: 800; margin: 26px 0 18px; }
@@ -76,7 +76,7 @@ a { color: inherit; }
 }
 @property --ang { syntax: '<angle>'; initial-value: 0deg; inherits: false; }
 @keyframes spin-ang { to { --ang: 360deg; } }
-.search input { flex: 1; min-width: 0; background: transparent; border: 0; outline: 0; font-size: 16px; font-family: var(--mono); padding: 10px 0; }
+.search input { flex: 1 1 0; width: 0; min-width: 0; background: transparent; border: 0; outline: 0; font-size: 16px; font-family: var(--mono); padding: 10px 0; }
 .search input::placeholder { color: var(--faint); }
 .btn-primary {
   display: inline-flex; align-items: center; gap: 8px; padding: 12px 20px; border-radius: 12px; font-weight: 600;
@@ -102,6 +102,7 @@ a { color: inherit; }
 .feature h4 { margin: 10px 0 4px; font-size: 14px; }
 .feature p { margin: 0; font-size: 12.5px; color: var(--muted); }
 .feature-icon { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; }
+@media (max-width: 480px) { .search-prefix { display: none; } .search { padding-left: 14px; } }
 .error-box { margin: 16px auto 0; max-width: 680px; padding: 12px 16px; border-radius: 12px; border: 1px solid rgba(255, 107, 129, 0.4); background: rgba(255, 107, 129, 0.08); color: #ffb3c0; font-size: 13px; text-align: left; }
 
 /* ---------- Scan ---------- */
@@ -280,3 +281,5 @@ a { color: inherit; }
 .md-pre { font-family: var(--mono); font-size: 12px; background: #06070b; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; overflow-x: auto; }
 .file-link { font-family: var(--mono); font-size: 12px; color: #a8f0e2; background: rgba(56, 225, 198, 0.1); border: 1px solid rgba(56, 225, 198, 0.25); padding: 0 5px; border-radius: 5px; transition: background 0.15s; }
 .file-link:hover { background: rgba(56, 225, 198, 0.22); }
+
+.tour-nav .btn-primary { max-width: 100%; min-width: 0; overflow: hidden; text-overflow: ellipsis; }

@@ -111,6 +111,8 @@ export interface Analysis {
   tour: TourStep[]
   readme: string | null
   totalLines: number
+  /** set when a repo is bigger than what Strata maps or reads */
+  limits: { totalFiles: number; mappedFiles: number; codeFiles: number; parsedFiles: number }
 }
 
 export interface ScanProgress {

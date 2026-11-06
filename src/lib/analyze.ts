@@ -1,11 +1,11 @@
-import { fetchRaw, fetchRepo, pool } from './github'
+import { fetchRaw, fetchRepo, pool, type RawTreeItem } from './github'
 import {
   CODE_LANGS, FILE_STACK, IGNORED_DIRS, IGNORED_FILES, LANG_BY_EXT, LAYERS, LAYER_BY_ID, NPM_STACK, PY_STACK,
   classifyLayer, folderRole, langColor,
 } from './knowledge'
-import { buildParsed, dirname, type ResolveCtx } from './parse'
+import { buildParsed, dirname, joinPath, type ResolveCtx } from './parse'
 import type {
-  Analysis, FileEntry, FolderInsight, GraphLink, GraphNode, KeyFile, LayerId, ParsedFile, ScanProgress, StackItem,
+  Analysis, FileEntry, FolderInsight, GraphLink, GraphNode, KeyFile, LayerId, ParsedFile, RepoMeta, ScanProgress, StackItem,
   TourStep, TreeNode,
 } from './types'
 
@@ -13,31 +13,44 @@ const MAX_PARSE = 450
 const MAX_PARSE_BYTES = 150_000
 const MAX_TREE_FILES = 6000
 
+/** Lower is more central. Real source beats tests, docs, fixtures and examples; `src/` folders win ties. */
+const SIDE_DIRS = /(^|\/)(fixtures?|__fixtures__|examples?|samples?|demos?|benchmarks?|bench|playground|vendor|third[_-]party|e2e|tests?|__tests__|docs?)\//i
+function centrality(f: FileEntry) {
+  return (f.layer === 'tests' || f.layer === 'docs' ? 2 : 0) + (SIDE_DIRS.test(f.path) ? 1 : 0) - (/(^|\/)src\//.test(f.path) ? 1 : 0)
+}
+
 const MANIFEST_RE = /(^|\/)(package\.json|requirements[^/]*\.txt|pyproject\.toml|setup\.py|go\.mod|Cargo\.toml|Gemfile|composer\.json|[tj]sconfig\.json)$/
 const PARSEABLE = new Set([...CODE_LANGS, 'CSS', 'SCSS', 'Less'])
 
 const ENTRY_RE = [
-  /^(src\/)?(main|index|app|server|cli)\.(ts|tsx|js|jsx|mjs|cjs)$/,
+  /^((src|source|lib)\/)?(main|index|app|server|cli)\.(ts|tsx|js|jsx|mjs|cjs)$/,
   /^(src\/)?app\/layout\.(tsx|jsx|js)$/, /^(src\/)?pages\/_app\.(tsx|jsx|js)$/,
   /(^|\/)(manage|app|main|wsgi|asgi|__main__|run|server)\.py$/,
   /^(cmd\/[^/]+\/)?main\.go$/, /^src\/(main|lib)\.rs$/, /(^|\/)Main\.(java|kt)$/, /^(bin|exe)\/[^/]+$/,
   /^(lib\/)?[\w-]+\.rb$/, /^index\.php$/,
 ]
 
+/** Where repo data comes from. Defaults to GitHub; tests and the accuracy harness pass a local checkout. */
+export interface RepoSource {
+  repo: () => Promise<{ meta: RepoMeta; tree: RawTreeItem[]; isPrivate: boolean }>
+  raw: (meta: RepoMeta, path: string) => Promise<string | null>
+}
+
 export async function analyzeRepo(
   owner: string, name: string, branch: string | undefined, token: string | undefined,
   onProgress: (p: ScanProgress) => void,
+  source?: RepoSource,
 ): Promise<Analysis> {
   const prog: ScanProgress = { stage: 0, label: 'Connecting to GitHub', discovered: 0, parsed: 0, toParse: 0, imports: 0, recent: [] }
   const emit = (patch: Partial<ScanProgress> = {}) => { Object.assign(prog, patch); onProgress({ ...prog, recent: [...prog.recent] }) }
   emit()
 
   /* 1. Fetch repo + tree */
-  const { meta, tree: rawTree, isPrivate } = await fetchRepo(owner, name, branch, token)
+  const { meta, tree: rawTree, isPrivate } = source ? await source.repo() : await fetchRepo(owner, name, branch, token)
 
   /* 2. Map the tree */
   emit({ stage: 1, label: 'Mapping the file tree' })
-  const files: FileEntry[] = []
+  let files: FileEntry[] = []
   for (const item of rawTree) {
     if (item.type !== 'blob') continue
     const p = item.path
@@ -47,7 +60,15 @@ export async function analyzeRepo(
     const ext = fname.includes('.') ? fname.split('.').pop()!.toLowerCase() : ''
     const lang = LANG_BY_EXT[ext] ?? (/^(Dockerfile|Makefile|Procfile)$/.test(fname) ? 'Config' : 'Other')
     files.push({ path: p, name: fname, dir: dirname(p), ext, size: item.size ?? 0, lang, layer: classifyLayer(p, lang) })
-    if (files.length >= MAX_TREE_FILES) break
+  }
+  // Huge repos: keep the most central files instead of the first N in alphabetical order.
+  const totalFiles = files.length
+  if (files.length > MAX_TREE_FILES) {
+    const keep = new Set(
+      files.map((f, i) => ({ f, i, k: (PARSEABLE.has(f.lang) ? 0 : 3) + centrality(f) }))
+        .sort((x, y) => x.k - y.k || x.i - y.i).slice(0, MAX_TREE_FILES).map((x) => x.f),
+    )
+    files = files.filter((f) => keep.has(f))
   }
   // animate discovery count
   for (let i = 1; i <= 12; i++) {
@@ -58,9 +79,9 @@ export async function analyzeRepo(
   /* 3. Choose + read files */
   emit({ stage: 2, label: 'Reading source files' })
   const depth = (p: string) => p.split('/').length
-  const candidates = files
-    .filter((f) => PARSEABLE.has(f.lang) && f.size < MAX_PARSE_BYTES && !/\.d\.ts$/.test(f.path))
-    .sort((a, b) => (a.layer === 'tests' ? 1 : 0) - (b.layer === 'tests' ? 1 : 0) || (a.layer === 'docs' ? 1 : 0) - (b.layer === 'docs' ? 1 : 0) || depth(a.path) - depth(b.path) || a.size - b.size)
+  const parseable = files.filter((f) => PARSEABLE.has(f.lang) && f.size < MAX_PARSE_BYTES && !/\.d\.ts$/.test(f.path))
+  const candidates = [...parseable]
+    .sort((a, b) => centrality(a) - centrality(b) || depth(a.path) - depth(b.path) || a.size - b.size)
     .slice(0, MAX_PARSE)
   const extras = files.filter((f) => MANIFEST_RE.test(f.path) && depth(f.path) <= 3).slice(0, 14)
   const readme = files.find((f) => /^readme(\.(md|mdx|rst|txt))?$/i.test(f.path))
@@ -70,7 +91,7 @@ export async function analyzeRepo(
   const contents = new Map<string, string>()
   let done = 0
   await pool(toRead, 16, async (f) => {
-    const text = await fetchRaw(meta, f.path, token, isPrivate)
+    const text = source ? await source.raw(meta, f.path) : await fetchRaw(meta, f.path, token, isPrivate)
     if (text != null) contents.set(f.path, text)
     done++
     prog.recent = [{ path: f.path, lang: f.lang }, ...prog.recent].slice(0, 7)
@@ -95,13 +116,15 @@ export async function analyzeRepo(
     if (!text) continue
     if (/[tj]sconfig\.json$/.test(f.path)) {
       try {
-        const json = JSON.parse(text.replace(/\/\*[\s\S]*?\*\/|(^|[^:"])\/\/.*$/gm, '$1').replace(/,(\s*[}\]])/g, '$1'))
-        const base = json.compilerOptions?.baseUrl ?? '.'
+        const json = parseJsonc(text)
+        const baseUrl: string | undefined = json.compilerOptions?.baseUrl
+        const base = joinPath(f.dir, baseUrl ?? '.')
         for (const [k, v] of Object.entries<string[]>(json.compilerOptions?.paths ?? {})) {
           const prefix = k.replace(/\*$/, '')
-          const target = (v[0] ?? '').replace(/\*$/, '')
-          jsAliases.push({ prefix, target: [f.dir, base, target].filter(Boolean).join('/').replace(/\/\.\//g, '/').replace(/^\.\//, '') })
+          for (const t of v) jsAliases.push({ prefix, target: joinPath(base, t.replace(/\*$/, '')) })
         }
+        // with baseUrl, bare specifiers like 'types' or 'lib/db' may be repo files
+        if (baseUrl !== undefined) jsAliases.push({ prefix: '', target: base })
       } catch { /* ignore malformed tsconfig */ }
     }
     if (/package\.json$/.test(f.path)) {
@@ -128,7 +151,8 @@ export async function analyzeRepo(
     }
   }
 
-  const ctx: ResolveCtx = { files: fileSet, byBasename, goModule, jsAliases, pyRoots, pyTops, dirFiles }
+  const pyAnywhere = new Set(files.filter((f) => f.ext === 'py').flatMap((f) => [f.name.replace(/\.py$/, ''), ...(f.name === '__init__.py' ? [f.dir.split('/').pop()!] : [])]))
+  const ctx: ResolveCtx = { files: fileSet, byBasename, goModule, jsAliases, pyRoots, pyTops, pyAnywhere, dirFiles }
   const parsed: Record<string, ParsedFile> = {}
   let importCount = 0
   const fileByPath = new Map(files.map((f) => [f.path, f]))
@@ -189,7 +213,7 @@ export async function analyzeRepo(
 
   // languages (by bytes of real source files, computed locally to save an API call)
   const LANG_OK = new Set([...PARSEABLE, 'HTML', 'Shell', 'SQL', 'GraphQL', 'Prisma', 'Terraform'])
-  const languages = aggregate(files.filter((f) => LANG_OK.has(f.lang) && f.layer !== 'docs'), (f) => f.lang, (f) => f.size)
+  const languages = aggregate(files.filter((f) => (LANG_OK.has(f.lang) && f.layer !== 'docs') || f.lang === 'MDX'), (f) => f.lang, (f) => f.size)
     .map(([n, bytes]) => ({ name: n, bytes }))
     .sort((a, b) => b.bytes - a.bytes)
     .map((l) => ({ ...l, color: langColor(l.name) }))
@@ -245,10 +269,36 @@ export async function analyzeRepo(
   return {
     meta, files, parsed, languages, stack, tree: buildTree(files, meta.name), nodes, links, layerFlows, layerCounts,
     folders, entryPoints: entries, keyFiles, externals, tour, readme: readmeText, totalLines,
+    limits: { totalFiles, mappedFiles: files.length, codeFiles: parseable.length, parsedFiles: candidates.length },
   }
 }
 
 /* ---------------- helpers ---------------- */
+
+// Parse JSON with comments and trailing commas (tsconfig.json). Comment markers inside strings, like the
+// globs in "include" or "@/*" path aliases, are left alone.
+export function parseJsonc(text: string): any {
+  let out = ''
+  let i = 0
+  while (i < text.length) {
+    const c = text[i]
+    if (c === '"') {
+      let j = i + 1
+      while (j < text.length && text[j] !== '"') j += text[j] === '\\' ? 2 : 1
+      out += text.slice(i, j + 1)
+      i = j + 1
+    } else if (c === '/' && text[i + 1] === '/') {
+      while (i < text.length && text[i] !== '\n') i++
+    } else if (c === '/' && text[i + 1] === '*') {
+      const end = text.indexOf('*/', i + 2)
+      i = end === -1 ? text.length : end + 2
+    } else {
+      out += c
+      i++
+    }
+  }
+  return JSON.parse(out.replace(/,(\s*[}\]])/g, '$1'))
+}
 
 function groupOf(path: string) {
   const parts = path.split('/')
@@ -337,12 +387,16 @@ function detectStack(files: FileEntry[], contents: Map<string, string>): StackIt
   return [...found.values()]
 }
 
-function readmeSummary(text: string) {
+export function readmeSummary(text: string) {
   const paras = text
     .replace(/```[\s\S]*?```/g, '')
     .replace(/<!--[\s\S]*?-->/g, '')
     .replace(/<[^>]+>/g, ' ')
     .replace(/!\[[^\]]*\]\([^)]*\)/g, '')
+    .replace(/!\[[^\]]*\]\[[^\]]*\]/g, '')
+    .replace(/\[\s*\](\([^)]*\)|\[[^\]]*\])/g, '')
+    .replace(/^\s*>\s*\[![A-Z]+\]\s*$/gm, '')
+    .replace(/^\s*>\s?/gm, '')
     .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
     .replace(/^\s*\[[^\]]+\]:\s*\S+.*$/gm, '')
     .replace(/\[([^\]]+)\]\[[^\]]*\]/g, '$1')

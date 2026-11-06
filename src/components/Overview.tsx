@@ -75,6 +75,11 @@ export default function Overview({ a, nav }: { a: Analysis; nav: Nav }) {
             <div className="stat"><div className="stat-v"><Counter value={a.nodes.length} /></div><div className="stat-l">modules parsed</div></div>
           </div>
           {a.meta.truncated && <p className="faint" style={{ fontSize: 12, marginBottom: 0 }}>This repo is very large; GitHub returned a partial file tree, so some files may be missing.</p>}
+          {(a.limits.mappedFiles < a.limits.totalFiles || a.limits.parsedFiles < a.limits.codeFiles) && (
+            <p className="faint" style={{ fontSize: 12, marginBottom: 0 }}>
+              Large repo: mapped {a.limits.mappedFiles.toLocaleString()} of {a.limits.totalFiles.toLocaleString()} files and read {a.limits.parsedFiles.toLocaleString()} of {a.limits.codeFiles.toLocaleString()} source files, starting with the most central code (src folders before tests, docs and examples).
+            </p>
+          )}
         </motion.div>
 
         <motion.div variants={item} className="panel panel-pad">
