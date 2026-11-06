@@ -1,5 +1,7 @@
 # Strata — see inside any codebase
 
+**Live demo:** https://kartikay633.github.io/Strata/ · try it on [pmndrs/zustand](https://kartikay633.github.io/Strata/?repo=pmndrs/zustand)
+
 Paste a GitHub repo and Strata reads the code, traces every import, and turns it into an interactive, animated explainer. It runs entirely in the browser, with no backend and no sign-up.
 
 ## Views
@@ -39,6 +41,14 @@ npm run smoke -- pmndrs/zustand "How is state managed?"   # engine test in Node
 ```
 
 Optional: add a GitHub token in the UI (stored in `localStorage`) for private repos and 5,000 requests/hour.
+
+## Deploy
+
+Every push to `main` builds the app and publishes it to GitHub Pages using `.github/workflows/deploy.yml`. The workflow sets `BASE_PATH=/<repo>/` so assets load from the project-site path. To build for Pages locally:
+
+```bash
+BASE_PATH=/Strata/ npm run build
+```
 
 ## Stack
 
