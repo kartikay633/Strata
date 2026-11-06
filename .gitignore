@@ -1,0 +1,6 @@
+node_modules
+dist
+scripts/.smoke.mjs
+tsconfig.tsbuildinfo
+.playwright-mcp
+.claude
