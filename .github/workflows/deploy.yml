@@ -24,6 +24,7 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - run: npm test
       # Project pages are served from /<repo>/, so assets need that base path.
       - run: npm run build
         env:

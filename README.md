@@ -42,6 +42,29 @@ npm run smoke -- pmndrs/zustand "How is state managed?"   # engine test in Node
 
 Optional: add a GitHub token in the UI (stored in `localStorage`) for private repos and 5,000 requests/hour.
 
+## Testing
+
+```bash
+npm test                                              # 51 unit tests (vitest)
+npm run accuracy -- path/to/local/clone owner/name    # compare against ground truth
+```
+
+- **Unit tests** cover import parsing for every supported language, including imports inside comments, strings and docstrings, aliases, `baseUrl`, folder and repo-root imports, and multi-line Python imports. They also cover layer rules, README summaries, tsconfig parsing, search, and a full in-memory analysis.
+- **The accuracy harness** runs Strata on a local checkout and compares every import link with ground truth from the official tooling: the TypeScript compiler's module resolution for JS/TS and Python's `ast` for Python. It also checks the reported packages against the repo's manifests and the language mix against GitHub's own stats. The checkout is only read, never installed or executed.
+
+Results on real repos:
+
+| Repo | Language | Import links | Precision | Recall |
+| --- | --- | --- | --- | --- |
+| pmndrs/zustand | TypeScript | 68 | 100% | 100% |
+| expressjs/express | JavaScript (CJS) | 154 | 100% | 100% |
+| sindresorhus/ky | TypeScript (ESM) | 179 | 100% | 100% |
+| shadcn-ui/taxonomy | Next.js / TSX | 264 | 100% | 100% |
+| pallets/flask | Python | 184 | 100% | 100% |
+| psf/requests | Python | 106 | 100% | 100% |
+
+CI runs the unit tests before every deploy.
+
 ## Deploy
 
 Every push to `main` builds the app and publishes it to GitHub Pages using `.github/workflows/deploy.yml`. The workflow sets `BASE_PATH=/<repo>/` so assets load from the project-site path. To build for Pages locally:

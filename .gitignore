@@ -4,3 +4,4 @@ scripts/.smoke.mjs
 tsconfig.tsbuildinfo
 .playwright-mcp
 .claude
+scripts/.accuracy.mjs
